@@ -1,6 +1,7 @@
 import request from "supertest";
 import { app } from "../../app";
 import { Ticket } from "../../models/ticket";
+import { natsWrapper } from "../../nats-wrapper";
 
 it("has a route handler listening to a /api/tickets for post request", async () => {
   const response = await request(app).post("/api/tickets").send({});
@@ -26,6 +27,7 @@ it("returns an error is title is not valid", async () => {
     .set("Cookie", global.signin())
     .send({ title: "", price: 10 })
     .expect(400);
+
   await request(app)
     .post("/api/tickets")
     .set("Cookie", global.signin())
@@ -61,4 +63,16 @@ it("creates a ticket with valid input", async () => {
   expect(tickets.length).toEqual(1);
   expect(tickets[0].title).toEqual("dummy");
   expect(tickets[0].price).toEqual(10);
+});
+
+it("publishes new event", async () => {
+  const title = "dummy";
+
+  await request(app)
+    .post("/api/tickets")
+    .set("Cookie", global.signin())
+    .send({ title, price: 10 })
+    .expect(201);
+
+  expect(natsWrapper.client.publish).toHaveBeenCalled();
 });
